@@ -6,6 +6,7 @@
  *
  */
 
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <structmember.h>
 #include "am2315.h"
@@ -19,7 +20,7 @@ typedef struct {
 
 static void AM2315_dealloc(AM2315_Object *self) {
 	am2315_close(self->am2315);
-	self->ob_type->tp_free((PyObject*)self);
+	Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 
@@ -80,7 +81,7 @@ static PyMethodDef AM2315_methods[] = {
 	{"temperature", (PyCFunction) AM2315_temperature, METH_NOARGS, "Returns a temperature value"},
 	{"humidity", (PyCFunction) AM2315_humidity, METH_NOARGS, "Returns a humidity value"},
 	{"sense", (PyCFunction) AM2315_sense, METH_NOARGS, "Returns a (temperature, humidity, crc_check) triple"},
-	{NULL}  /* Sentinel */
+	{NULL, NULL, 0, NULL}   /* Sentinel */
 };
 
 
@@ -92,66 +93,75 @@ static PyMemberDef AM2315_members[] = {
 
 
 static PyTypeObject AM2315_Type = {
-	PyObject_HEAD_INIT(NULL)
-	0,                         /*ob_size*/
-	"tentacle_pi.AM2315",             /*tp_name*/
-	sizeof(AM2315_Object),             /*tp_basicsize*/
-	0,                         /*tp_itemsize*/
-	(destructor)AM2315_dealloc, /*tp_dealloc*/
-	0,                         /*tp_print*/
-	0,                         /*tp_getattr*/
-	0,                         /*tp_setattr*/
-	0,                         /*tp_compare*/
-	0,                         /*tp_repr*/
-	0,                         /*tp_as_number*/
-	0,                         /*tp_as_sequence*/
-	0,                         /*tp_as_mapping*/
-	0,                         /*tp_hash */
-	0,                         /*tp_call*/
-	0,                         /*tp_str*/
-	0,                         /*tp_getattro*/
-	0,                         /*tp_setattro*/
-	0,                         /*tp_as_buffer*/
-	Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
-	"AM2315 objects",           /* tp_doc */
-	0,		               /* tp_traverse */
-	0,		               /* tp_clear */
-	0,		               /* tp_richcompare */
-	0,		               /* tp_weaklistoffset */
-	0,		               /* tp_iter */
-	0,		               /* tp_iternext */
-	AM2315_methods,             /* tp_methods */
-	AM2315_members,             /* tp_members */
-	0,                         /* tp_getset */
-	0,                         /* tp_base */
-	0,                         /* tp_dict */
-	0,                         /* tp_descr_get */
-	0,                         /* tp_descr_set */
-	0,                         /* tp_dictoffset */
-	(initproc)AM2315_init,      /* tp_init */
-	0,                         /* tp_alloc */
-	AM2315_new,                 /* tp_new */
+        PyVarObject_HEAD_INIT(NULL, 0)
+        0,                         /*ob_size*/
+        "tentacle_pi.AM2315",      /*tp_name*/
+        sizeof(AM2315_Object),     /*tp_basicsize*/
+        0,                         /*tp_itemsize*/
+        (destructor)AM2315_dealloc,/*tp_dealloc*/
+        0,                         /*tp_print*/
+        0,                         /*tp_getattr*/
+        0,                         /*tp_setattr*/
+        0,                         /*tp_compare*/
+        0,                         /*tp_repr*/
+        0,                         /*tp_as_number*/
+        0,                         /*tp_as_sequence*/
+        0,                         /*tp_as_mapping*/
+        0,                         /*tp_hash */
+        0,                         /*tp_call*/
+        0,                         /*tp_str*/
+        0,                         /*tp_getattro*/
+        0,                         /*tp_setattro*/
+        0,                         /*tp_as_buffer*/
+        Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
+        "AM2315 objects",          /* tp_doc */
+        0,                         /* tp_traverse */
+        0,                         /* tp_clear */
+        0,                         /* tp_richcompare */
+        0,                         /* tp_weaklistoffset */
+        0,                         /* tp_iter */
+        0,                         /* tp_iternext */
+        AM2315_methods,            /* tp_methods */
+        AM2315_members,            /* tp_members */
+        0,                         /* tp_getset */
+        0,                         /* tp_base */
+        0,                         /* tp_dict */
+        0,                         /* tp_descr_get */
+        0,                         /* tp_descr_set */
+        0,                         /* tp_dictoffset */
+        (initproc)AM2315_init,     /* tp_init */
+        0,                         /* tp_alloc */
+        AM2315_new,                /* tp_new */
 };
 
 
 
-static PyMethodDef module_methods[] = {
-	{NULL}  /* Sentinel */
+static struct PyModuleDef AM2315_Module = {
+        PyModuleDef_HEAD_INIT,
+        "tentacle_pi",       /* m_name */
+        "AM2315 com. module",/* m_doc */
+        -1,                  /* m_size */
 };
 
 
 
-PyMODINIT_FUNC initAM2315(void) {
+PyMODINIT_FUNC PyInit_AM2315(void)
+{
 	PyObject *m;
 
 	if(PyType_Ready(&AM2315_Type) < 0)
-		return;
+		return NULL;
 
-	m = Py_InitModule3("AM2315", module_methods, "AM2315 extension module");
-
+	m = PyModule_Create(&AM2315_Module);
 	if(m == NULL)
-		return;
+		return NULL;
 
 	Py_INCREF(&AM2315_Type);
-	PyModule_AddObject(m, "AM2315", (PyObject *)&AM2315_Type);
+	if (PyModule_AddObject(m, "AM2315", (PyObject *) &AM2315_Type) < 0) {
+		Py_DECREF(&AM2315_Type);
+		Py_DECREF(m);
+		return NULL;
+	}
+
+	return m;
 }

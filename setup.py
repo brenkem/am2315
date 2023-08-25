@@ -5,6 +5,7 @@ setup(
 	packages = ["tentacle_pi"],
 	ext_modules = [
 		Extension("tentacle_pi.AM2315",
+			libraries=['i2c'],
 			sources = ["src/am2315.c", "src/am2315_ext.c"])
 	]
 )

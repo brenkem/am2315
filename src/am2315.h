@@ -6,6 +6,9 @@
  *
  */
 
+#ifndef _AM2315_H
+#define _AM2315_H
+
 void *am2315_init(int address, const char* i2c_device_filepath);
 
 void am2315_close(void *_am);
@@ -15,3 +18,5 @@ float am2315_temperature(void *_am);
 float am2315_humidity(void *_am);
 
 int am2315_read_data(void *_am, float *temperature, float *humidity);
+
+#endif /* am2315.h */

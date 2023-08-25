@@ -4,7 +4,7 @@
 #include <time.h>
 
 int main(int argc, char **argv){
-	char *i2c_device = "/dev/i2c-5";
+	char *i2c_device = "/dev/i2c-1";
 	int address = 0x5c;
 
 	void *am = am2315_init(address, i2c_device);
