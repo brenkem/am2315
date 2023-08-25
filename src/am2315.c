@@ -3,9 +3,9 @@
  * @date 	28.02.2015
  *
  * A C driver for the sensor AM2315.
- *  
+ *
  */
- 
+
 #ifndef __AM2315__
 #define __AM2315__
 #include <stdint.h>
@@ -17,10 +17,13 @@
 #include <unistd.h>
 #include <errno.h>
 #include <stdio.h>
-#include <linux/i2c-dev.h>
+#include "i2c/smbus.h"
+#include "linux/i2c-dev.h"
+#include <sys/ioctl.h>
 #include <time.h>
 #include <math.h>
 #endif
+
 
 /*
  * am2315 commands
@@ -33,7 +36,7 @@
  * Define debug function.
  */
 //#define __AM2315_DEBUG__
-#ifdef __AM2315_DEBUG__				
+#ifdef __AM2315_DEBUG__
 #define DEBUG(...)	printf(__VA_ARGS__)
 #else
 #define DEBUG(...)
@@ -53,10 +56,10 @@
 typedef struct {
 	/* file descriptor */
 	int file;
-	
+
 	/* i2c device address */
 	int address;
-	
+
 	/* i2c device file path */
 	char *i2c_device;
 } am2315_t;
@@ -93,7 +96,7 @@ void am2315_wakeup(void *_am) {
 
 /*
  * Compute humidity value based on the msb and lsb bytes.
- * 
+ *
  * @param msb
  * @param lsb
  * @return humidity
@@ -109,8 +112,8 @@ float am2315_compute_humidity(unsigned char msb, unsigned char lsb) {
 
 
 /*
- * Compute temperature value based on the msb and lsb bytes. 
- * 
+ * Compute temperature value based on the msb and lsb bytes.
+ *
  * @param msb
  * @param lsb
  * @return temperature
@@ -118,15 +121,15 @@ float am2315_compute_humidity(unsigned char msb, unsigned char lsb) {
 float am2315_compute_temperature(unsigned char msb, unsigned char lsb) {
 	int temperature_h, temperature_l;
 	float tmp;
-	
+
 	temperature_h = msb & 0x7F; // ignore first bit
 	temperature_l = lsb;
 	tmp = (temperature_h << 8) + temperature_l;
 	tmp /= 10.0;
-	
+
 	if(msb & 0x80) // check if negative
 		tmp *= -1;
-	
+
 	return tmp;
 }
 
@@ -134,7 +137,7 @@ float am2315_compute_temperature(unsigned char msb, unsigned char lsb) {
 
 /*
  * Computes the crc code.
- * 
+ *
  * @param char pointer
  * @param length
  * @return crc
@@ -142,7 +145,7 @@ float am2315_compute_temperature(unsigned char msb, unsigned char lsb) {
 uint16_t am2315_crc16(unsigned char *ptr, unsigned char len) {
 	unsigned short crc = 0xFFFF;
 	unsigned char i;
-	
+
 	while(len--) {
 		crc ^= *ptr++;
 		for(i = 0; i < 8; i++) {
@@ -153,7 +156,7 @@ uint16_t am2315_crc16(unsigned char *ptr, unsigned char len) {
 				crc >>= 1;
 			}
 		}
-		
+
 	}
 	return crc;
 }
@@ -162,7 +165,7 @@ uint16_t am2315_crc16(unsigned char *ptr, unsigned char len) {
 
 /*
  * Sets the address for the i2c device file.
- * 
+ *
  * @param am2315 sensor
  * @return error code
  */
@@ -181,17 +184,17 @@ int am2315_set_addr(void *_am) {
 
 /*
  * Frees allocated memory in the init function.
- * 
+ *
  * @param am2315 sensor
  */
 void am2315_init_error_cleanup(void *_am) {
 	am2315_t* am = TO_AM(_am);
-	
+
 	if(am->i2c_device != NULL) {
 		free(am->i2c_device);
 		am->i2c_device = NULL;
 	}
-	
+
 	free(am);
 	am = NULL;
 }
@@ -204,7 +207,7 @@ void am2315_init_error_cleanup(void *_am) {
 
 /**
  * Read temperature and humidity value from the am2315 sensor.
- * 
+ *
  * @param am2315 sensor
  * @param temperature
  * @param humidity
@@ -212,27 +215,27 @@ void am2315_init_error_cleanup(void *_am) {
  */
 int am2315_read_data(void *_am, float *temperature, float *humidity) {
 	am2315_t *am = TO_AM(_am);
-	
+
 	am2315_wakeup(_am);
-	
+
 	static unsigned char send[3] = {
 		AM2315_CMD_READ_REG,	// read command
 		0x00,					// use start register 0x00
 		0x04					// read 4 bytes
 	};
 	// in other words we read the bytes 0x00, 0x01, 0x02, 0x03
-	// 0x00 = humidity_h, 0x01 = humidity_l, 
+	// 0x00 = humidity_h, 0x01 = humidity_l,
 	// 0x02 = temperature_h, 0x03 = temperature_l
-	
+
 	if(write(am->file, send, 3) < 0) {
 		DEBUG("error: write()\n");
 		return -1;
 	}
-	
+
 	usleep(10*1000); // 10ms
-	
+
 	unsigned char buf[8]; // data buffer
-	
+
 	if(read(am->file, &buf, 8) < 0 ) {
 		DEBUG("error: read()\n");
 		return -1;
@@ -242,23 +245,23 @@ int am2315_read_data(void *_am, float *temperature, float *humidity) {
 			DEBUG("byte %i: %#x\n", i, buf[i]);
 		}
 	}
-		
+
 	// compute humidity value
 	*humidity = am2315_compute_humidity(buf[2], buf[3]);
-	
+
 	// compute temperature value
 	*temperature = am2315_compute_temperature(buf[4], buf[5]);
-	
+
 	// compute crc
 	uint16_t crc_res = am2315_crc16(buf, 6);
 	uint16_t crc = (buf[7] << 8) + buf[6];
-		
+
 	DEBUG("tmp: %f\n", *temperature);
 	DEBUG("hum: %f\n", *humidity);
 	DEBUG("crc: %i\n", crc);
 	DEBUG("crc_res: %i\n", crc_res);
 	DEBUG("crc_ok: %i\n", crc_res == crc);
-		
+
 	return crc_res == crc;
 }
 
@@ -273,7 +276,7 @@ int am2315_read_data(void *_am, float *temperature, float *humidity) {
  */
 void *am2315_init(int address, const char* i2c_device_filepath) {
 	DEBUG("device: init using address %#x and i2cbus %s\n", address, i2c_device_filepath);
-	
+
 	// setup am2315
 	void *_am = malloc(sizeof(am2315_t));
 	if(_am == NULL)  {
@@ -294,7 +297,7 @@ void *am2315_init(int address, const char* i2c_device_filepath) {
 
 	// copy string
 	strcpy(am->i2c_device, i2c_device_filepath);
-	
+
 	// open i2c device
 	int file;
 	if((file = open(am->i2c_device, O_RDWR)) < 0) {
@@ -310,7 +313,7 @@ void *am2315_init(int address, const char* i2c_device_filepath) {
 	}
 
 	// setup i2c device
-	
+
 	DEBUG("device: open ok\n");
 
 	return _am;
@@ -320,31 +323,31 @@ void *am2315_init(int address, const char* i2c_device_filepath) {
 
 /**
  * Closes a AM2315 object.
- * 
+ *
  * @param am2315 sensor
  */
 void am2315_close(void *_am) {
 	if(_am == NULL) {
 		return;
 	}
-	
+
 	DEBUG("close am2315 device\n");
 	am2315_t *am = TO_AM(_am);
-	
+
 	if(close(am->file) < 0)
 		DEBUG("error: %s close() failed\n", am->i2c_device);
-	
+
 	free(am->i2c_device); // free string
 	am->i2c_device = NULL;
 	free(am); // free bmp structure
 	_am = NULL;
-} 
+}
 
 
 
 /**
  * Returns the measured temperature in celsius.
- * 
+ *
  * @param am2315 sensor
  * @return temperature
  */
@@ -358,7 +361,7 @@ float am2315_temperature(void *_am) {
 
 /**
  * Returns the measured humidity in percentage.
- * 
+ *
  * @param am2315 sensor
  * @return humidity
  */

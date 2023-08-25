@@ -3,9 +3,9 @@
  * @date 	28.02.2015
  *
  * A C driver for the sensor AM2315.
- *  
+ *
  */
- 
+
 void *am2315_init(int address, const char* i2c_device_filepath);
 
 void am2315_close(void *_am);
