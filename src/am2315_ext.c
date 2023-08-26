@@ -87,14 +87,15 @@ static PyMethodDef AM2315_methods[] = {
 
 
 static PyTypeObject AM2315_Type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-   .tp_name = "tentacle_pi.AM2315",
-   .tp_basicsize = sizeof(AM2315_Object),
-   .tp_doc = PyDoc_STR("AM2315 objects"),
-   .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
-   .tp_new = AM2315_new,
-   .tp_init = (initproc)AM2315_init,
-   .tp_dealloc = (destructor)AM2315_dealloc,
+        PyVarObject_HEAD_INIT(NULL, 0)
+        .tp_name = "tentacle_pi.AM2315",
+        .tp_basicsize = sizeof(AM2315_Object),
+        .tp_doc = PyDoc_STR("AM2315 objects"),
+        .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
+        .tp_new = AM2315_new,
+        .tp_init = (initproc)AM2315_init,
+        .tp_dealloc = (destructor)AM2315_dealloc,
+        .tp_methods = AM2315_methods,
 };
 
 
@@ -104,7 +105,6 @@ static struct PyModuleDef AM2315_Module = {
         "tentacle_pi",       /* m_name */
         "AM2315 com. module",/* m_doc */
         -1,                  /* m_size */
-	AM2315_methods,      /* m_methods */
 };
 
 

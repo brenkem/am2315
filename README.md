@@ -1,6 +1,6 @@
 # AM2315
 
-Raspberry Pi C driver and Python bindings for the sensor AM2315.
+Raspberry Pi C driver and Python3 bindings for the sensor AM2315.
 
 
 ## Example Usage
